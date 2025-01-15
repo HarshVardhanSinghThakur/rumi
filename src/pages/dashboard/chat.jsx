@@ -36,7 +36,7 @@ import { MentionsInput, Mention } from 'react-mentions';
 
 
 const JettIcon = ({ className }) => {
-  return <img src="/img/jett.png" alt="Bot Icon" className={className} />;
+  return <img src="/img/logo-ct-dark.png" alt="Bot Icon" className={className} />;
 };
 
 const UserIcon = ({ className }) => {
