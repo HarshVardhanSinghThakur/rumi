@@ -58,7 +58,10 @@ Open your browser and navigate to http://localhost:5173. You should see the app 
 
 ## Frontend Development Task
 
-Your task is to enhance the Rumi chatbot interface to support multiple data visualization formats in chat responses. The chatbot should be able to display:
+### Context
+Rumi is an AI-powered chatbot interface that currently supports basic text-based conversations. As we expand its capabilities, we need to enhance the user experience by enabling the chatbot to display various types of data visualizations and rich media content in its responses. This will allow Rumi to better present statistical data, trends, and visual information to users in an interactive and engaging way.
+
+For example, when a user asks about "sales trends over the last 6 months", instead of just providing numbers in text, Rumi should be able to display this information as an interactive line chart. Similarly, when discussing "market share", it should be able to show a pie chart, or when comparing data, present it in a sortable table format.
 
 ### Required Features
 
@@ -70,18 +73,15 @@ Your task is to enhance the Rumi chatbot interface to support multiple data visu
 
 2. **Data Visualization Components**
    - Tables
-     - Sortable columns
      - Responsive design
      - Optional: pagination for large datasets
    - Charts
      - Pie charts for displaying proportional data
      - Line charts for temporal data
      - Bar charts for comparative data
-     - Interactive tooltips on hover
    
 3. **Media Support**
    - Image display with lazy loading
-   - Optional: image zoom/lightbox functionality
    - Optional: basic image carousel for multiple images
 
 ### Technical Requirements
@@ -90,25 +90,21 @@ Your task is to enhance the Rumi chatbot interface to support multiple data visu
 - Implement responsive design principles
 - Use a charting library of your choice (e.g., Chart.js, D3.js, or Recharts)
 - Handle loading and error states appropriately
-- Ensure accessibility standards are met
 
 ### Evaluation Criteria
 
 - Feature completeness
 - Code organization and architecture
 - Component reusability
-- Performance considerations
 - UI/UX design choices
 - Error handling
 - Code quality and documentation
-- Accessibility implementation
 
 ### Bonus Points
 
 - Animations for transitions between different data formats
 - Export functionality for charts and tables
 - Unit tests for components
-- Custom styling for charts to match the application theme
 
 ## IMPORTANT NOTE
 - Make sure that you understand the existing code and the code that YOU write.
