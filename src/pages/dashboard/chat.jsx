@@ -1,4 +1,6 @@
+//chat.jsx
 import {Fragment, useState, useEffect, useMemo, useRef} from 'react';
+import { Groq } from 'groq-sdk';
 import {
   Card,
   CardBody,
@@ -29,9 +31,10 @@ import {
 } from "@heroicons/react/24/solid";
 import { Link, useParams } from "react-router-dom";
 import './dashboard.css'
+import RichTextRenderer from '../../components/textFormating/RichTextRenderer';
+import ChatbotRenderer from './ChatbotRenderer';
 import { BACKEND_CHAT_URL, ENV_CHAT_PROXY, ENV_PROXY } from "@/configs/globalVariable";
 import styles from './chat.module.css';
-import gfm from 'remark-gfm';
 import { MentionsInput, Mention } from 'react-mentions';
 
 
@@ -53,12 +56,112 @@ function ChatBox() {
   const [nameToIdMap, setNameToIdMap] = useState(new Map());
 
   // Sample responses for local testing
+  // const sampleResponses = [
+  //   "I can help you with that! Here's what you need to know...",
+  //   "That's an interesting question. Let me explain...",
+  //   "Based on your question, I would recommend...",
+  //   "Here's a detailed explanation of what you're asking about..."
+  // ];
   const sampleResponses = [
-    "I can help you with that! Here's what you need to know...",
-    "That's an interesting question. Let me explain...",
-    "Based on your question, I would recommend...",
-    "Here's a detailed explanation of what you're asking about..."
+    {
+      type: 'text',
+      content: "Here's a **bold text** and an *italic text* to get started."
+    },
+    {
+      type: 'text',
+      content: "You can also create lists:\n\n- Item 1\n- Item 2\n  - Sub-item 2.1\n  - Sub-item 2.2\n\nOr numbered lists:\n\n1. Step 1\n2. Step 2\n3. Step 3"
+    },
+    {
+      type: 'table',
+      data: {
+        columns: [
+          { key: 'name', title: 'Product' },
+          { key: 'price', title: 'Price' },
+          { key: 'stock', title: 'Stock' }
+        ],
+        rows: [
+          { name: 'Laptop', price: '$999', stock: 50 },
+          { name: 'Smartphone', price: '$599', stock: 75 },
+          { name: 'Tablet', price: '$349', stock: 100 }
+        ]
+      }
+    },
+    {
+      type: 'chart',
+      chartType: 'bar',
+      data: {
+        chartData: [
+          { name: 'Jan', sales: 4000 },
+          { name: 'Feb', sales: 3000 },
+          { name: 'Mar', sales: 5000 },
+          { name: 'Apr', sales: 4500 },
+          { name: 'May', sales: 6000 }
+        ],
+        chartOptions: {
+          title: 'Monthly Sales Performance',
+          xAxis: 'Month',
+          yAxis: 'Sales ($)'
+        }
+      }
+    },
+    {
+      type: 'image',
+      data: [
+        '/public/img/home-decor-1.jpeg',
+        '/public/img/home-decor-2.jpeg',
+        '/public/img/home-decor-3.jpeg'
+      ]
+    },
+    {
+      type: 'text',
+      content: "Code snippets can be formatted too:\n\n```javascript\nfunction greet(name) {\n  return `Hello, ${name}!`;\n}\nconsole.log(greet('World'));\n```"
+    },
+    {
+      type: 'chart',
+      chartType: 'pie',
+      data: {
+        chartData: [
+          { name: 'Technology', value: 35 },
+          { name: 'Healthcare', value: 25 },
+          { name: 'Finance', value: 20 },
+          { name: 'Education', value: 15 },
+          { name: 'Other', value: 5 }
+        ],
+        chartOptions: {
+          title: 'Industry Market Share',
+          label: 'Percentage'
+        }
+      }
+    },
+    {
+      type: 'table',
+      data: {
+        columns: [
+          { key: 'category', title: 'Category' },
+          { key: 'q1', title: 'Q1' },
+          { key: 'q2', title: 'Q2' },
+          { key: 'q3', title: 'Q3' },
+          { key: 'q4', title: 'Q4' }
+        ],
+        rows: [
+          { category: 'Revenue', q1: '$100K', q2: '$120K', q3: '$150K', q4: '$200K' },
+          { category: 'Expenses', q1: '$80K', q2: '$90K', q3: '$110K', q4: '$130K' },
+          { category: 'Profit', q1: '$20K', q2: '$30K', q3: '$40K', q4: '$70K' }
+        ]
+      }
+    },
+    {
+      type: 'image',
+      data: [
+        '/public/img/home-decor-1.jpeg'
+      ]
+    },
+    {
+      type: 'text',
+      content: "Combining different types of content allows for rich, informative communication!"
+    }
   ];
+  
 
   const [messageState, setMessageState] = useState({
     messages: [
@@ -99,15 +202,16 @@ function ChatBox() {
 
     // Simulate bot response with delay
     setTimeout(() => {
-      const randomResponse = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];
-      
+      const randomResponse = sampleResponses[Math.floor(Math.random() * sampleResponses.length)];//Math.floor(Math.random() * sampleResponses.length)
+     sampleResponses.forEach((randomResponse) => {
       setMessageState((state) => ({
         ...state,
         messages: [
           ...state.messages,
           {
             type: 'bot',
-            message: randomResponse,
+            message: randomResponse.type === 'text' ? randomResponse.content : null,
+            responseData: randomResponse
           },
         ],
         sourceDocuments: [
@@ -117,9 +221,148 @@ function ChatBox() {
           }
         ]
       }));
+    });
       setLoading(false);
     }, 1000);
   }
+
+  // to fetch result from api/templlm
+  // async function queryLLM(query) {
+  //   try {
+  //     console.log('Sending query:', query); // Debugging log
+  
+  //     // Validate query
+  //     if (!query || query.trim() === '') {
+  //       throw new Error('Query cannot be empty');
+  //     }
+  
+  //     // Fetch configuration
+  //     const fetchOptions = {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //         // Add any additional headers if needed
+  //         // 'Authorization': `Bearer ${your_token}` 
+  //       },
+  //       body: JSON.stringify({ 
+  //         query: query,
+  //         // Add any additional parameters your API expects
+  //         context: 'chat_conversation'
+  //       })
+  //     };
+  
+  //     // Timeout configuration
+  //     const controller = new AbortController();
+  //     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 seconds timeout
+  
+  //     const response = await fetch('/api/tempLLM', {
+  //       ...fetchOptions,
+  //       signal: controller.signal
+  //     });
+  
+  //     clearTimeout(timeoutId);
+  
+  //     // Check response status
+  //     if (!response.ok) {
+  //       const errorBody = await response.text();
+  //       console.error('API Error Response:', errorBody);
+  //       throw new Error(`HTTP error! status: ${response.status}, message: ${errorBody}`);
+  //     }
+  
+  //     // Parse response
+  //     const data = await response.json();
+  
+  //     console.log('API Response:', data); // Debugging log
+  
+  //     // Validate response structure
+  //     if (!data || (!data.finalResponse && !data.message)) {
+  //       throw new Error('Invalid response structure from API');
+  //     }
+  
+  //     return {
+  //       finalResponse: data.finalResponse || data.message || 'No response generated',
+  //       searchResults: data.searchResults || []
+  //     };
+  
+  //   } catch (error) {
+  //     console.error('Detailed QueryLLM Error:', {
+  //       name: error.name,
+  //       message: error.message,
+  //       stack: error.stack
+  //     });
+  
+  //     // Provide more informative error messages
+  //     const errorMessages = {
+  //       'TypeError': 'Network connection issue. Please check your internet.',
+  //       'AbortError': 'Request timed out. The server might be slow or unresponsive.',
+  //       'default': 'An unexpected error occurred. Please try again.'
+  //     };
+  
+  //     return {
+  //       finalResponse: errorMessages[error.name] || `Error: ${error.message}`,
+  //       searchResults: []
+  //     };
+  //   }
+  // }
+
+  //handle querying tempLLM
+  // async function handleSubmit(e) {
+  //   e.preventDefault();
+  
+  //   if (!query) {
+  //     alert('Please input a question');
+  //     return;
+  //   }
+  
+  //   const question = query.trim();
+  
+  //   // Add user message
+  //   setMessageState((state) => ({
+  //     ...state,
+  //     messages: [
+  //       ...state.messages,
+  //       {
+  //         type: 'you',
+  //         message: question,
+  //       },
+  //     ],
+  //   }));
+  
+  //   setLoading(true);
+  //   setQuery('');
+  
+  //   try {
+  //     // Call the LLM API
+  //     const response = await queryLLM(question);
+  
+  //     // Update message state with the LLM response
+  //     setMessageState((state) => ({
+  //       ...state,
+  //       messages: [
+  //         ...state.messages,
+  //         {
+  //           type: 'bot',
+  //           message: response.finalResponse || 'No response generated.',
+  //         },
+  //       ],
+  //       sourceDocuments: response.searchResults || [],
+  //     }));
+  //   } catch (error) {
+  //     console.error('Error in handleSubmit:', error);
+  //     setMessageState((state) => ({
+  //       ...state,
+  //       messages: [
+  //         ...state.messages,
+  //         {
+  //           type: 'bot',
+  //           message: 'Sorry, there was an error processing your request.',
+  //         },
+  //       ],
+  //     }));
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
 
   //prevent empty submissions
   const handleEnter = (e) => {
@@ -205,33 +448,46 @@ function ChatBox() {
   return (
     <div className="h-full border border-gray-300 rounded-lg relative grid grid-cols-1 grid-rows-[1fr,auto]">
     <div className={`m-4 overflow-y-auto`}>
-      {chatMessages.map((message, index) => {
-        if (message.message === "") {
-          return;
-        }
-        let icon;
-        let className;
-        let textName;
-        if (message.type === "bot") {
-          icon = <JettIcon className="h-6 w-6" />;
-          className = "flex items-center gap-2 rounded-md mb-2 bg-gray-50";
-          textName = "text-black";
-        } else {
-          icon = <UserIcon className="h-6 w-6" />;
-          className = "flex items-center gap-2 rounded-md mb-2  bg-gray-50";
-          textName = "text-black";
-        }
-        return (
-          <div key={`chatMessage-${index}`} className={className}>
-            <div className="flex-none mx-2">{icon}</div>
-            <div className={`flex-grow mx-2 px-4 py-2 rounded-md mb-2 ${styles.markdownanswer} ${textName}`}>
-              <ReactMarkdown remarkPlugins={[gfm]} linkTarget="_blank">
-                {message.message}
-              </ReactMarkdown>
-            </div>
-          </div>
-        );
-      })}
+    {chatMessages.map((message, index) => {
+  if (message.message === "") {
+    return;
+  }
+  let icon;
+  let className;
+  let textName;
+  if (message.type === "bot") {
+    icon = <JettIcon className="h-6 w-6" />;
+    className = "flex items-center gap-2 rounded-md mb-2 bg-gray-50";
+    textName = "text-black";
+    
+    return (
+      <div key={`chatMessage-${index}`} className={className}>
+        <div className="flex-none mx-2">{icon}</div>
+        <div className={`flex-grow mx-2 px-4 py-2 rounded-md mb-2 ${styles.markdownanswer} ${textName}`}>
+          {message.responseData && message.responseData.type !== 'text' ? (
+            <ChatbotRenderer response={message.responseData} />
+          ) : (
+            <RichTextRenderer content={message.message} />
+          )}
+        </div>
+      </div>
+    );
+  } else {
+    // Existing user message rendering logic
+    icon = <UserIcon className="h-6 w-6" />;
+    className = "flex items-center gap-2 rounded-md mb-2  bg-gray-50";
+    textName = "text-black";
+    
+    return (
+      <div key={`chatMessage-${index}`} className={className}>
+        <div className="flex-none mx-2">{icon}</div>
+        <div className={`flex-grow mx-2 px-4 py-2 rounded-md mb-2 ${styles.markdownanswer} ${textName}`}>
+          <RichTextRenderer content={message.message} />
+        </div>
+      </div>
+    );
+  }
+})}
       <div ref={messagesEndRef}></div>
     </div>
     <div className="flex flex-col justify-end max-h-[300px]">
